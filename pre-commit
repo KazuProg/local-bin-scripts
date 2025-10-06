@@ -1,0 +1,23 @@
+#!/bin/bash
+
+TEMPLATE_PRE_COMMIT_HOOK="
+#!/bin/bash
+
+GIT_ROOT_DIR=\$(git rev-parse --show-toplevel)
+"
+
+GIT_ROOT_DIR=$(git rev-parse --show-toplevel)
+
+if [ "$GIT_ROOT_DIR" == "" ]; then
+    echo "Error: Current directory is not in a Git repository."
+    exit 1
+fi
+
+PRE_COMMIT_PATH="$GIT_ROOT_DIR/.git/hooks/pre-commit"
+
+if [ ! -f "$PRE_COMMIT_PATH" ]; then
+    echo "$TEMPLATE_PRE_COMMIT_HOOK" > "$PRE_COMMIT_PATH"
+    chmod +x "$PRE_COMMIT_PATH"
+fi
+
+cursor "$PRE_COMMIT_PATH"
