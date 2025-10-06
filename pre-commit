@@ -6,7 +6,21 @@ TEMPLATE_PRE_COMMIT_HOOK="
 GIT_ROOT_DIR=\$(git rev-parse --show-toplevel)
 "
 
-GIT_ROOT_DIR=$(git rev-parse --show-toplevel)
+# ヘルプメッセージを表示
+show_help() {
+    echo "Usage: pre-commit [COMMAND]"
+    echo ""
+    echo "Commands:"
+    echo "  run     Execute the pre-commit hook"
+    echo "  rm      Remove the pre-commit hook"
+    echo "  edit    Edit the pre-commit hook (default behavior)"
+    echo "  help    Show this help message"
+    echo ""
+    echo "If no command is specified, the default behavior is to edit the pre-commit hook."
+}
+
+# Gitリポジトリのルートディレクトリを取得
+GIT_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
 
 if [ "$GIT_ROOT_DIR" == "" ]; then
     echo "Error: Current directory is not in a Git repository."
@@ -15,9 +29,53 @@ fi
 
 PRE_COMMIT_PATH="$GIT_ROOT_DIR/.git/hooks/pre-commit"
 
-if [ ! -f "$PRE_COMMIT_PATH" ]; then
-    echo "$TEMPLATE_PRE_COMMIT_HOOK" > "$PRE_COMMIT_PATH"
-    chmod +x "$PRE_COMMIT_PATH"
-fi
+# サブコマンドを処理
+case "${1:-edit}" in
+    "run")
+        if [ ! -f "$PRE_COMMIT_PATH" ]; then
+            echo "Error: Pre-commit hook not found at $PRE_COMMIT_PATH"
+            echo "Run 'pre-commit edit' first to create the hook."
+            exit 1
+        fi
 
-cursor "$PRE_COMMIT_PATH"
+        echo "Running pre-commit hook..."
+        "$PRE_COMMIT_PATH"
+        exit $?
+        ;;
+
+    "rm")
+        if [ ! -f "$PRE_COMMIT_PATH" ]; then
+            echo "Pre-commit hook not found at $PRE_COMMIT_PATH"
+            echo "Nothing to remove."
+            exit 0
+        fi
+
+        echo "Removing pre-commit hook..."
+        rm "$PRE_COMMIT_PATH"
+        echo "Pre-commit hook removed successfully."
+        exit 0
+        ;;
+
+    "edit")
+        if [ ! -f "$PRE_COMMIT_PATH" ]; then
+            echo "Creating new pre-commit hook..."
+            echo "$TEMPLATE_PRE_COMMIT_HOOK" > "$PRE_COMMIT_PATH"
+            chmod +x "$PRE_COMMIT_PATH"
+        fi
+
+        cursor "$PRE_COMMIT_PATH"
+        exit 0
+        ;;
+
+    "help"|"-h"|"--help")
+        show_help
+        exit 0
+        ;;
+
+    *)
+        echo "Error: Unknown command '$1'"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac
