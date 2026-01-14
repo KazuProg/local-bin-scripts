@@ -1,10 +1,36 @@
 #!/bin/bash
 
-TEMPLATE_PRE_COMMIT_HOOK="
+read -r -d '' TEMPLATE_PRE_COMMIT_HOOK << 'EOF'
 #!/bin/bash
 
-GIT_ROOT_DIR=\$(git rev-parse --show-toplevel)
-"
+GIT_WORKTREE_DIR=\$(git rev-parse --show-toplevel)
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+echo "GIT_BRANCH: $GIT_BRANCH"
+
+# 部分一致での判定
+# GIT_BRANCHにreleaseが含まれている場合は、コミットさせない
+if [[ $GIT_BRANCH == *"release"* ]]; then
+  echo "WARNING: release branch is not allowed to commit"
+  exit 1
+fi
+
+# 完全一致での判定
+case $GIT_BRANCH in
+  "main" )
+    echo "Error: main branch is not allowed to commit"
+    exit 1
+  ;;
+  "HEAD" )
+    echo "Warning: Probably rebase or merge is in progress. Skipping tests."
+    exit 0
+  ;;
+  * )
+    echo "Warning: No tests or configurations are registered for this branch"
+    exit 1
+  ;;
+esac
+EOF
 
 # ヘルプメッセージを表示
 show_help() {
@@ -19,15 +45,18 @@ show_help() {
     echo "If no command is specified, the default behavior is to edit the pre-commit hook."
 }
 
-# Gitリポジトリのルートディレクトリを取得
-GIT_ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
+# Gitリポジトリのワークツリーディレクトリを取得
+GIT_WORKTREE_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
 
-if [ "$GIT_ROOT_DIR" == "" ]; then
-    echo "Error: Current directory is not in a Git repository."
+if [ "$GIT_WORKTREE_DIR" == "" ]; then
+    echo "Error: Current directory is not in a Git worktree."
     exit 1
 fi
 
-PRE_COMMIT_PATH="$GIT_ROOT_DIR/.git/hooks/pre-commit"
+# .gitディレクトリ
+GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+
+PRE_COMMIT_PATH="$GIT_COMMON_DIR/hooks/pre-commit"
 
 # サブコマンドを処理
 case "${1:-edit}" in
